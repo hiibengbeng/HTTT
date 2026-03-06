@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
-import { ChevronLeft, MapPin, User, Users, MessageSquare, CheckCircle2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { ChevronLeft, MapPin, Users, MessageSquare, CheckCircle2, QrCode } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 // Types
@@ -12,6 +12,7 @@ interface Participant {
   id: string;
   name: string;
   avatar: string;
+  checkedIn?: boolean;
 }
 
 interface Activity {
@@ -42,16 +43,17 @@ const INITIAL_ACTIVITY: Activity = {
     avatar: 'https://picsum.photos/seed/organizer/100/100',
   },
   participants: [
-    { id: 'p1', name: '小明', avatar: 'https://picsum.photos/seed/p1/100/100' },
-    { id: 'p2', name: '小红', avatar: 'https://picsum.photos/seed/p2/100/100' },
+    { id: 'p1', name: '小明', avatar: 'https://picsum.photos/seed/p1/100/100', checkedIn: true },
+    { id: 'p2', name: '小红', avatar: 'https://picsum.photos/seed/p2/100/100', checkedIn: false },
   ],
-  status: 'ongoing', // Set to ongoing for demo purposes to show "End Early" button
+  status: 'ongoing',
 };
 
 export default function App() {
   const [view, setView] = useState<'detail' | 'participants'>('detail');
-  const [activity, setActivity] = useState<Activity>(INITIAL_ACTIVITY);
+  const [activity] = useState<Activity>(INITIAL_ACTIVITY);
   const [showModal, setShowModal] = useState(false);
+  const [showQRCode, setShowQRCode] = useState(false);
 
   // Mock users who cannot be added
   const failedParticipants = [
@@ -60,7 +62,6 @@ export default function App() {
   ];
 
   const handleCreateGroup = () => {
-    // Simulate that some users cannot be added
     setShowModal(true);
   };
 
@@ -155,7 +156,6 @@ export default function App() {
                   <span className="font-medium text-lg">{activity.organizer.name}</span>
                 </div>
               </div>
-
             </div>
 
             {/* Bottom Button */}
@@ -178,11 +178,18 @@ export default function App() {
             className="min-h-screen flex flex-col"
           >
             {/* Header */}
-            <div className="flex items-center p-4 border-b border-slate-50">
+            <div className="flex items-center p-4 border-b border-slate-50 sticky top-0 bg-white z-10">
               <button onClick={() => setView('detail')} className="p-2 -ml-2">
                 <ChevronLeft className="w-6 h-6" />
               </button>
-              <h1 className="flex-1 text-center text-lg font-medium mr-8">参与者</h1>
+              <h1 className="flex-1 text-center text-lg font-medium">参与者</h1>
+              <button 
+                onClick={() => setShowQRCode(true)}
+                className="flex flex-col items-center p-1 text-[#8B5CF6]"
+              >
+                <QrCode className="w-5 h-5" />
+                <span className="text-[10px] font-bold mt-0.5">签到码</span>
+              </button>
             </div>
 
             {/* Participants List */}
@@ -190,14 +197,21 @@ export default function App() {
               {activity.participants.length > 0 ? (
                 <div className="space-y-6">
                   {activity.participants.map((p) => (
-                    <div key={p.id} className="flex items-center gap-4">
-                      <img
-                        src={p.avatar}
-                        alt={p.name}
-                        className="w-14 h-14 rounded-full object-cover shadow-sm"
-                        referrerPolicy="no-referrer"
-                      />
-                      <span className="text-lg font-medium">{p.name}</span>
+                    <div key={p.id} className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <img
+                          src={p.avatar}
+                          alt={p.name}
+                          className="w-14 h-14 rounded-full object-cover shadow-sm"
+                          referrerPolicy="no-referrer"
+                        />
+                        <span className="text-lg font-medium">{p.name}</span>
+                      </div>
+                      {p.checkedIn && (
+                        <span className="bg-emerald-50 text-emerald-600 text-xs font-bold px-2.5 py-1 rounded-full border border-emerald-100">
+                          已签到
+                        </span>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -257,7 +271,6 @@ export default function App() {
                   这些用户无法被一键组群
                 </p>
                 
-                {/* Failed Users List */}
                 <div className="grid grid-cols-2 gap-4 pt-2">
                   {failedParticipants.map((user) => (
                     <div key={user.id} className="flex flex-col items-center space-y-2 bg-slate-50 p-3 rounded-2xl">
@@ -281,6 +294,60 @@ export default function App() {
               >
                 我知道了
               </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal for QR Code */}
+      <AnimatePresence>
+        {showQRCode && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowQRCode(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative bg-white w-full max-w-xs rounded-[2.5rem] overflow-hidden shadow-2xl p-8"
+            >
+              <div className="text-center space-y-6">
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900">活动签到码</h3>
+                  <p className="text-slate-400 text-sm mt-1">请向工作人员出示此码</p>
+                </div>
+                
+                <div className="bg-slate-50 p-6 rounded-3xl flex items-center justify-center aspect-square border-2 border-slate-100">
+                  <div className="relative">
+                    <img
+                      src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=activity-checkin-123"
+                      alt="Check-in QR Code"
+                      className="w-48 h-48"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                       <div className="bg-white p-2 rounded-xl shadow-lg border border-slate-100">
+                         <QrCode className="w-6 h-6 text-[#8B5CF6]" />
+                       </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-xs text-slate-400">有效期至 2026/03/05 18:00</p>
+                  <button
+                    onClick={() => setShowQRCode(false)}
+                    className="w-full py-4 bg-[#8B5CF6] text-white rounded-2xl font-bold text-lg shadow-lg shadow-indigo-100 active:scale-[0.98] transition-transform"
+                  >
+                    关闭
+                  </button>
+                </div>
+              </div>
             </motion.div>
           </div>
         )}
